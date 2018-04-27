@@ -48,6 +48,9 @@ class ControllerThread(threading.Thread):
         # Reset state
         self.disable(stop=False)
 
+        # Keeps track of when we last printed
+        self.last_time_print = 0.0
+
         # Connect some callbacks from the Crazyflie API
         self.cf.connected.add_callback(self._connected)
         self.cf.disconnected.add_callback(self._disconnected)
@@ -75,27 +78,18 @@ class ControllerThread(threading.Thread):
         log_stab_att.add_variable('stabilizer.pitch', 'float')
         log_stab_att.add_variable('stabilizer.yaw', 'float')
         self.cf.log.add_config(log_stab_att)
-        log_stab_att.data_received_cb.add_callback(self._log_data_stab_att)
-        log_stab_att.error_cb.add_callback(self._log_error)
-        log_stab_att.start()
     
         log_pos = LogConfig(name='Kalman Position', period_in_ms=self.period_in_ms)
         log_pos.add_variable('kalman.stateX', 'float')
         log_pos.add_variable('kalman.stateY', 'float')
         log_pos.add_variable('kalman.stateZ', 'float')
         self.cf.log.add_config(log_pos)
-        log_pos.data_received_cb.add_callback(self._log_data_pos)
-        log_pos.error_cb.add_callback(self._log_error)
-        log_pos.start()
         
         log_vel = LogConfig(name='Kalman Velocity', period_in_ms=self.period_in_ms)
         log_vel.add_variable('kalman.statePX', 'float')
         log_vel.add_variable('kalman.statePY', 'float')
         log_vel.add_variable('kalman.statePZ', 'float')
         self.cf.log.add_config(log_vel)
-        log_vel.error_cb.add_callback(self._log_error)
-        log_vel.data_received_cb.add_callback(self._log_data_vel)
-        log_vel.start()
 
         log_att = LogConfig(name='Kalman Attitude',
                             period_in_ms=self.period_in_ms)
@@ -104,10 +98,27 @@ class ControllerThread(threading.Thread):
         log_att.add_variable('kalman.q2', 'float')
         log_att.add_variable('kalman.q3', 'float')
         self.cf.log.add_config(log_att)
-        log_att.error_cb.add_callback(self._log_error)
-        log_att.data_received_cb.add_callback(self._log_data_att)
-        log_att.start()
-    
+        
+        if log_stab_att.valid and log_pos.valid and log_vel.valid and log_att.valid:
+            log_stab_att.data_received_cb.add_callback(self._log_data_stab_att)
+            log_stab_att.error_cb.add_callback(self._log_error)
+            log_stab_att.start()
+
+            log_pos.data_received_cb.add_callback(self._log_data_pos)
+            log_pos.error_cb.add_callback(self._log_error)
+            log_pos.start()
+
+            log_vel.error_cb.add_callback(self._log_error)
+            log_vel.data_received_cb.add_callback(self._log_data_vel)
+            log_vel.start()
+
+            log_att.error_cb.add_callback(self._log_error)
+            log_att.data_received_cb.add_callback(self._log_data_att)
+            log_att.start()
+        else:
+            raise RuntimeError('One or more of the variables in the configuration was not'
+                               'found in log TOC. Will not get any position data.')
+
     def _connection_failed(self, link_uri, msg):
         print('Connection to %s failed: %s' % (link_uri, msg))
 
@@ -169,15 +180,15 @@ class ControllerThread(threading.Thread):
         self.pos_ref = np.r_[self.pos[:2], 1.0]
         self.yaw_ref = 0.0
         print('Initial positional reference:', self.pos_ref)
-        print('Initial thrust:', self.thrust)
+        print('Initial thrust reference:', self.thrust_r)
         print('Ready to go. Press e to enable motors')
         log_file_name = 'flightlog_' + time.strftime("%Y%m%d_%H%M%S") + '.csv'
         with open(log_file_name, 'w') as fh:
             while True:
                 time_start = time.time()
+                self.calc_control_signals()
                 if self.enabled:
-                    self.calc_control_signals()
-                    sp = (self.roll, self.pitch, self.yawrate, int(self.thrust))
+                    sp = (self.roll_r, self.pitch_r, self.yawrate_r, int(self.thrust_r))
                     self.send_setpoint(*sp)
                     # Log data to file for analysis
                     ld = np.append(np.asarray(sp), self.pos_ref)
@@ -196,15 +207,31 @@ class ControllerThread(threading.Thread):
         # THAT OUTPUTS THE REFERENCE VALUES FOR
         # ROLL PITCH, YAWRATE AND THRUST
         # WHICH ARE TAKEN CARE OF BY THE ONBOARD CONTROL LOOPS
+        roll, pitch, yaw  = trans.euler_from_quaternion(self.attq)
 
         # The code below will simply send the thrust that you can
         # set using the keyboard. It also shows how, using numpy,
         # you can threshold the signals to be between the
         # the lower and upper limits defined by the arrays *_limit
-        self.roll    = np.clip(0.0, *self.pitch_limit)
-        self.pitch   = np.clip(0.0, *self.pitch_limit)
-        self.yawrate = np.clip(0.0, *self.yaw_limit)
-        self.thrust  = np.clip(self.thrust, *self.thrust_limit)
+        self.roll_r    = np.clip(0.0, *self.pitch_limit)
+        self.pitch_r   = np.clip(0.0, *self.pitch_limit)
+        self.yawrate_r = np.clip(0.0, *self.yaw_limit)
+        self.thrust_r  = np.clip(self.thrust_r, *self.thrust_limit)
+    
+        message = ('ref: ({}, {}, {}, {})\n'.format(self.pos_ref[0], self.pos_ref[1], self.pos_ref[2], self.yaw_ref)+
+                   'pos: ({}, {}, {}, {})\n'.format(self.pos[0], self.pos[1], self.pos[2], yaw)+
+                   'vel: ({}, {}, {})\n'.format(self.vel[1], self.vel[1], self.vel[2])+
+                   'control: ({}, {}, {}, {})\n'.format(self.roll_r,
+                                                       self.pitch_r,
+                                                       self.yawrate_r,
+                                                       self.thrust_r))
+        self.print_at_period(2.0, message)
+
+    def print_at_period(self, period, message):
+        """ Prints the message at a given period """
+        if (time.time() - period) >  self.last_time_print:
+            self.last_time_print = time.time()
+            print(message)
 
     def reset_estimator(self):
         self.cf.param.set_value('kalman.resetEstimation', '1')
@@ -217,10 +244,10 @@ class ControllerThread(threading.Thread):
         if self.enabled:
             print('Disabling controller')
         self.enabled = False
-        self.roll    = 0.0
-        self.pitch   = 0.0
-        self.yawrate = 0.0
-        self.thrust  = self.thrust_initial
+        self.roll_r    = 0.0
+        self.pitch_r   = 0.0
+        self.yawrate_r = 0.0
+        self.thrust_r  = self.thrust_initial
 
     def enable(self):
         if not self.enabled:
@@ -239,12 +266,12 @@ class ControllerThread(threading.Thread):
                   'Too slow control loop!')
 
     def increase_thrust(self):
-        self.thrust += self.thrust_step
-        self.thrust = min(self.thrust, 0xffff)
+        self.thrust_r += self.thrust_step
+        self.thrust_r = min(self.thrust_r, 0xffff)
 
     def decrease_thrust(self):
-        self.thrust -= self.thrust_step
-        self.thrust = max(0, self.thrust)
+        self.thrust_r -= self.thrust_step
+        self.thrust_r = max(0, self.thrust_r)
 
 def handle_keyboard_input(control):
     pos_step = 0.1 # [m]
@@ -268,10 +295,10 @@ def handle_keyboard_input(control):
             print('l: Decrease yaw-reference by ', yaw_step, 'deg.')
         elif ch == '>':
             control.increase_thrust()
-            print('Increased thrust to', control.thrust)
+            print('Increased thrust to', control.thrust_r)
         elif ch == '<':
             control.decrease_thrust()
-            print('Decreased thrust to', control.thrust)
+            print('Decreased thrust to', control.thrust_r)
         elif ch == 'w':
             control.pos_ref[0] += pos_step
             print('Reference position changed to :', control.pos_ref)
