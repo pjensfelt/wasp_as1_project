@@ -221,10 +221,7 @@ class ControllerThread(threading.Thread):
         message = ('ref: ({}, {}, {}, {})\n'.format(self.pos_ref[0], self.pos_ref[1], self.pos_ref[2], self.yaw_ref)+
                    'pos: ({}, {}, {}, {})\n'.format(self.pos[0], self.pos[1], self.pos[2], yaw)+
                    'vel: ({}, {}, {})\n'.format(self.vel[1], self.vel[1], self.vel[2])+
-                   'control: ({}, {}, {}, {})\n'.format(self.roll_r,
-                                                       self.pitch_r,
-                                                       self.yawrate_r,
-                                                       self.thrust_r))
+                   'control: ({}, {}, {}, {})\n'.format(self.roll_r, self.pitch_r, self.yawrate_r, self.thrust_r))
         self.print_at_period(2.0, message)
 
     def print_at_period(self, period, message):
