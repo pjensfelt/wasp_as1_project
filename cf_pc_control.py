@@ -212,9 +212,9 @@ class ControllerThread(threading.Thread):
         # Compute control errors in position
         ex,  ey,  ez  = self.pos_ref - self.pos
 
-        # The code below will simply send the thrust that you can
-        # set using the keyboard. It also shows how, using numpy,
-        # you can threshold the signals to be between the
+        # The code below will simply send the thrust that you can set using
+        # the keyboard and put all other control signals to zero. It also
+        # shows how, using numpy, you can threshold the signals to be between
         # the lower and upper limits defined by the arrays *_limit
         self.roll_r    = np.clip(0.0, *self.pitch_limit)
         self.pitch_r   = np.clip(0.0, *self.pitch_limit)
