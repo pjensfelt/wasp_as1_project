@@ -209,6 +209,9 @@ class ControllerThread(threading.Thread):
         # WHICH ARE TAKEN CARE OF BY THE ONBOARD CONTROL LOOPS
         roll, pitch, yaw  = trans.euler_from_quaternion(self.attq)
 
+        # Compute control errors in position
+        ex,  ey,  ez  = self.pos_ref - self.pos
+
         # The code below will simply send the thrust that you can
         # set using the keyboard. It also shows how, using numpy,
         # you can threshold the signals to be between the
@@ -221,6 +224,7 @@ class ControllerThread(threading.Thread):
         message = ('ref: ({}, {}, {}, {})\n'.format(self.pos_ref[0], self.pos_ref[1], self.pos_ref[2], self.yaw_ref)+
                    'pos: ({}, {}, {}, {})\n'.format(self.pos[0], self.pos[1], self.pos[2], yaw)+
                    'vel: ({}, {}, {})\n'.format(self.vel[1], self.vel[1], self.vel[2])+
+                   'error: ({}, {}, {})\n'.format(ex, ey, ez)+
                    'control: ({}, {}, {}, {})\n'.format(self.roll_r, self.pitch_r, self.yawrate_r, self.thrust_r))
         self.print_at_period(2.0, message)
 
