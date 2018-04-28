@@ -30,3 +30,15 @@ pip install -r requirements.txt
 ```sh
 python cf_pc_control.py
 ```
+
+## Crazyradio PA USB Dongle
+If you run on Linux and you system is not recognizing the USB radio dongle you probably want to do
+```
+sudo groupadd plugdev
+sudo usermod -a -G plugdev $USER
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="1915", ATTRS{idProduct}=="7777", MODE="0664", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/99-crazyradio.rules
+
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", MODE="0664", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/99-crazyflie.rules
+
+sudo udevadm control --reload-rules
+sudo service udev restart
