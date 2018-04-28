@@ -41,3 +41,4 @@ echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", MODE=
 sudo udevadm control --reload-rules
 sudo service udev restart
 ```
+Unplug the radio and plug it in again and it should be recognized
