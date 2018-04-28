@@ -169,9 +169,6 @@ class ControllerThread(threading.Thread):
 
         print('Waiting for position estimate to be good enough...')
         self.reset_estimator()
-        # Sleep a but, hoping that the estimator will have converged
-        # Should be replaced by something that actually checks
-        time.sleep(1.5)
 
         self.make_position_sanity_check();
 
@@ -181,7 +178,7 @@ class ControllerThread(threading.Thread):
         self.yaw_ref = 0.0
         print('Initial positional reference:', self.pos_ref)
         print('Initial thrust reference:', self.thrust_r)
-        print('Ready to go. Press e to enable motors')
+        print('Ready! Press e to enable motors, h for help and Q to quit')
         log_file_name = 'flightlog_' + time.strftime("%Y%m%d_%H%M%S") + '.csv'
         with open(log_file_name, 'w') as fh:
             while True:
@@ -238,6 +235,9 @@ class ControllerThread(threading.Thread):
         self.cf.param.set_value('kalman.resetEstimation', '1')
         time.sleep(0.1)
         self.cf.param.set_value('kalman.resetEstimation', '0')
+        # Sleep a bit, hoping that the estimator will have converged
+        # Should be replaced by something that actually checks...
+        time.sleep(1.5)
 
     def disable(self, stop=True):
         if stop:
