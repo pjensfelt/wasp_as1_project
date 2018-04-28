@@ -1,6 +1,8 @@
 # `wasp_as1_project`
 Template code for the WASP Autonomous Systems 1 project using Crazyflies
 
+In what is described below it is assumed that you have clone this repository and entered the directory.
+
 ## Python 3 (recommended)
 ### Dependencies
 Make sure that you have python3 and pip3 installed. On a Ubuntu system you would
