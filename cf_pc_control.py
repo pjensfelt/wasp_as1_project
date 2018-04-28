@@ -353,10 +353,13 @@ if __name__ == "__main__":
         print('Scanning for Crazyflies...')
         available = crtp.scan_interfaces()
         print('Found Crazyflies:')
-        for i in available:
-            print('-', i[0])
         if available:
+            for i in available:
+                print('-', i[0])
             URI = available[0][0]
+        else:
+            print('No Crazyflies found!')
+            sys.exit(1)
 
     print('Connecting to', URI)
     cf.open_link(URI)
