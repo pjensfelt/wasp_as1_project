@@ -352,8 +352,8 @@ if __name__ == "__main__":
     if URI is None:
         print('Scanning for Crazyflies...')
         available = crtp.scan_interfaces()
-        print('Found Crazyflies:')
         if available:
+            print('Found Crazyflies:')
             for i in available:
                 print('-', i[0])
             URI = available[0][0]
