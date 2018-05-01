@@ -181,6 +181,7 @@ class ControllerThread(threading.Thread):
         print('Ready! Press e to enable motors, h for help and Q to quit')
         log_file_name = 'flightlog_' + time.strftime("%Y%m%d_%H%M%S") + '.csv'
         with open(log_file_name, 'w') as fh:
+            t0 = time.time()
             while True:
                 time_start = time.time()
                 self.calc_control_signals()
@@ -188,7 +189,9 @@ class ControllerThread(threading.Thread):
                     sp = (self.roll_r, self.pitch_r, self.yawrate_r, int(self.thrust_r))
                     self.send_setpoint(*sp)
                     # Log data to file for analysis
-                    ld = np.append(np.asarray(sp), self.pos_ref)
+                    ld = np.r_[time.time() - t0]
+                    ld = np.append(ld, np.asarray(sp))
+                    ld = np.append(ld, self.pos_ref)
                     ld = np.append(ld, self.yaw_ref)
                     ld = np.append(ld, self.pos)
                     ld = np.append(ld, self.vel)
@@ -197,6 +200,7 @@ class ControllerThread(threading.Thread):
                     ld = np.append(ld, trans.euler_from_quaternion(self.attq))
                     ld = np.append(ld, self.stab_att)
                     fh.write(','.join(map(str, ld)) + '\n')
+                    fh.flush()
                 self.loop_sleep(time_start)
 
     def calc_control_signals(self):
