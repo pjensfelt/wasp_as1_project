@@ -217,7 +217,7 @@ class ControllerThread(threading.Thread):
         # the keyboard and put all other control signals to zero. It also
         # shows how, using numpy, you can threshold the signals to be between
         # the lower and upper limits defined by the arrays *_limit
-        self.roll_r    = np.clip(0.0, *self.pitch_limit)
+        self.roll_r    = np.clip(0.0, *self.roll_limit)
         self.pitch_r   = np.clip(0.0, *self.pitch_limit)
         self.yawrate_r = np.clip(0.0, *self.yaw_limit)
         self.thrust_r  = np.clip(self.thrust_r, *self.thrust_limit)
